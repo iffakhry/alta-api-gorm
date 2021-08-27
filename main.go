@@ -51,12 +51,73 @@ func main() {
 	e.GET("/books", GetBooksController)
 	e.GET("/books/:id", GetOneBookController)
 	e.POST("/books", CreateBookController)
+	e.PUT("/books/:id", UpdateBookController)
+	e.DELETE("/books/:id", DeleteBookController)
 
 	// start the server, and log if it fails
 	e.Start(":8000")
 }
 
-// get all users
+func DeleteBookController(c echo.Context) error {
+	responses := map[string]interface{}{
+		"message": "failed to delete",
+	}
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"message": "false param",
+		})
+	}
+	var book Book
+	tx := DB.Delete(&book, id)
+	if tx.Error != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, map[string]interface{}{
+			"message": "cannot fetch data",
+		})
+	}
+	if tx.RowsAffected > 0 {
+
+		responses["message"] = "success delete book"
+
+	}
+
+	return c.JSON(http.StatusOK, responses)
+}
+
+// update book
+func UpdateBookController(c echo.Context) error {
+	responses := map[string]interface{}{
+		"message": "failed to update",
+	}
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, map[string]interface{}{
+			"message": "false param",
+		})
+	}
+	var book Book
+	tx := DB.Find(&book, id)
+	if tx.Error != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, map[string]interface{}{
+			"message": "cannot fetch data",
+		})
+	}
+	if tx.RowsAffected > 0 {
+		c.Bind(&book)
+		if err := DB.Save(&book).Error; err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, map[string]interface{}{
+				"message": "cannot update data",
+			})
+		} else {
+			responses["message"] = "success update book"
+			responses["book"] = book
+		}
+	}
+
+	return c.JSON(http.StatusOK, responses)
+}
+
+// get One book
 func GetOneBookController(c echo.Context) error {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -72,12 +133,12 @@ func GetOneBookController(c echo.Context) error {
 		})
 	}
 	return c.JSON(http.StatusOK, map[string]interface{}{
-		"message": "success get all books",
+		"message": "success get books",
 		"book":    book,
 	})
 }
 
-// get all users
+// get all books
 func GetBooksController(c echo.Context) error {
 	var books []Book
 
@@ -92,14 +153,14 @@ func GetBooksController(c echo.Context) error {
 	})
 }
 
-// create new user
+// create new book
 func CreateBookController(c echo.Context) error {
 	book := Book{}
 	c.Bind(&book)
 
 	if err := DB.Save(&book).Error; err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, map[string]interface{}{
-			"message": "cannot fetch data",
+			"message": "cannot create data",
 		})
 	}
 	return c.JSON(http.StatusOK, map[string]interface{}{
